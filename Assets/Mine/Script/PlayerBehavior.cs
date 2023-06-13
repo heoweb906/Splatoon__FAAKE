@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class PlayerBehavior : MonoBehaviour
@@ -9,6 +10,8 @@ public class PlayerBehavior : MonoBehaviour
     public GameObject octoPlayer;
     public GameObject gun_obj;
     public GameObject curlingStone;
+    public GameObject shark;
+    public GameObject sharkBomb;
 
     public ParticleSystem mainparticle;
     public ParticleSystem bulletparticle; // 총알 파티클 시스템 컴포넌트
@@ -31,9 +34,15 @@ public class PlayerBehavior : MonoBehaviour
     private bool fireOn; // 공격 시작
     private bool fireOff; // 공격 종료
     private bool fireCurling; // 컬링 공격
+    private bool fireshark; // 샤크 웨이브
+    
 
     private bool isJumping; // 점프 중인지 여부를 나타내는 변수
     private bool isFiring; // 공격을 하고 있는지
+    private bool isSharkWave; // 궁극기를 사용하고 있는지
+    private bool isSharkmove; // 궁극기를 사용하고 있는지
+
+
 
     private Vector3 moveVec; // 플레이어의 이동 값
     private Vector3 playerLookDirc; // 플레이어 회전 할 때 사용할 값(1)
@@ -49,6 +58,11 @@ public class PlayerBehavior : MonoBehaviour
         rigid = GetComponent<Rigidbody>();
     }
 
+    private void CamLock() {
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+    }
+
 
     private void Update()
     {
@@ -59,14 +73,20 @@ public class PlayerBehavior : MonoBehaviour
         Attack();
         CurlingBomb();
         CamLock();
+
+
+        MoveForward();
     }
 
 
-    private void CamLock()
-    {
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
-    }
+
+    
+
+  
+
+
+
+
 
     private void GetInput()  // 입력을 받는 함수
     {
@@ -77,71 +97,106 @@ public class PlayerBehavior : MonoBehaviour
         fireOn = Input.GetButtonDown("Fire1");
         fireOff = Input.GetButtonUp("Fire1");
         fireCurling = Input.GetButtonDown("Fire2");
+        fireshark = Input.GetButtonDown("SharkWave");
     }
+
 
     private void Move() // 이동을 관리하는 함수
     {
-        // 입력에 따른 이동 방향 계산
-        Vector3 moveDirection = new Vector3(hAxis, 0f, vAxis).normalized;
-
-        // 현재 카메라의 전방 벡터를 가져와서 이동 방향을 변환
-        Vector3 cameraForward = mainCamera.transform.forward;
-        Vector3 cameraRight = mainCamera.transform.right;
-        cameraForward.y = 0f;
-        cameraRight.y = 0f;
-        cameraForward.Normalize();
-        cameraRight.Normalize();
-
-        moveVec = cameraForward * moveDirection.z + cameraRight * moveDirection.x;
-
-        transform.position += moveVec * speed * Time.deltaTime;
-
-
-        if (jDown && !isJumping)
+        if(!isSharkWave)
         {
-            Jump();
+            // 입력에 따른 이동 방향 계산
+            Vector3 moveDirection = new Vector3(hAxis, 0f, vAxis).normalized;
+
+            // 현재 카메라의 전방 벡터를 가져와서 이동 방향을 변환
+            Vector3 cameraForward = mainCamera.transform.forward;
+            Vector3 cameraRight = mainCamera.transform.right;
+            cameraForward.y = 0f;
+            cameraRight.y = 0f;
+            cameraForward.Normalize();
+            cameraRight.Normalize();
+
+            moveVec = cameraForward * moveDirection.z + cameraRight * moveDirection.x;
+
+            transform.position += moveVec * speed * Time.deltaTime;
+
+
+            if (jDown && !isJumping)
+            {
+                Jump();
+            }
+        }
+        
+
+        if(fireshark && isSharkWave == false)
+        {
+            StartCoroutine(SharkWave());
         }
     }
+
+
+    IEnumerator SharkWave()
+    {
+        isSharkWave = true;
+        humanPlayer.SetActive(false);
+        shark.SetActive(true);
+        yield return new WaitForSeconds(0.3f);
+
+        isSharkmove = true;
+
+        yield return new WaitForSeconds(1.2f);
+
+        isSharkmove = false;
+
+        yield return new WaitForSeconds(0.4f);
+
+        isSharkWave = false;
+        humanPlayer.SetActive(true);
+        shark.SetActive(false);
+        Instantiate(sharkBomb, transform.position, transform.rotation);
+    }
+    private void MoveForward()
+    {
+        if (isSharkmove)
+        {
+            Vector3 newPosition = transform.position + transform.forward * 20f * Time.deltaTime;
+            transform.position = newPosition;
+        }
+    }
+
 
 
 
     private void PlayerTurn()  // 플레이어 회전(총 회전도 같이 관리함)
     {
-        playerLookDirc = new Vector3(hAxis, 0, vAxis);
-        playerLookDirc = mainCamera.transform.TransformDirection(playerLookDirc);
-        playerLookDirc = playerLookDirc.normalized;
-        playerLookDirc.y = 0;
-
-        if (!isFiring)
+        if(!isSharkWave)
         {
-            if (moveVec != Vector3.zero)
+            playerLookDirc = new Vector3(hAxis, 0, vAxis);
+            playerLookDirc = mainCamera.transform.TransformDirection(playerLookDirc);
+            playerLookDirc = playerLookDirc.normalized;
+            playerLookDirc.y = 0;
+
+            if (!isFiring)
             {
-                playerRotateVec = Quaternion.LookRotation(playerLookDirc);
+                if (moveVec != Vector3.zero)
+                {
+                    playerRotateVec = Quaternion.LookRotation(playerLookDirc);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, playerRotateVec, Time.deltaTime * turnSpeed);
+                }
+            }
+            else if (isFiring)
+            {
+                playerRotateVec = mainCamera.transform.localRotation;
+                playerRotateVec.x = 0;
+                playerRotateVec.z = 0;
                 transform.rotation = Quaternion.Slerp(transform.rotation, playerRotateVec, Time.deltaTime * turnSpeed);
+
+                gunLookDirc = Camera.main.transform.forward;
+                Quaternion gunRotateVec = Quaternion.LookRotation(gunLookDirc);
+                gun_obj.transform.rotation = gunRotateVec;
             }
         }
-        else if (isFiring)
-        {
-            playerRotateVec = mainCamera.transform.localRotation;
-            playerRotateVec.x = 0;
-            playerRotateVec.z = 0;
-            transform.rotation = Quaternion.Slerp(transform.rotation, playerRotateVec, Time.deltaTime * turnSpeed);
-
-            gunLookDirc = Camera.main.transform.forward;
-            Quaternion gunRotateVec = Quaternion.LookRotation(gunLookDirc);
-            gun_obj.transform.rotation = gunRotateVec;
-        }
-    }
-    private void GunTurn()
-    {
-        //gunLookDirc = Camera.main.transform.forward;
-
-        //Quaternion gunRotateVec = Quaternion.LookRotation(gunLookDirc);
-        //Quaternion newRotation = gun_obj.transform.rotation;
-
-        //newRotation.x = gunRotateVec.x; // 원하는 x 축 값으로 변경해주세요
-        //newRotation.y = transform.rotation.y;
-        //newRotation.z = transform.rotation.z;
+        
     }
 
 
@@ -154,8 +209,12 @@ public class PlayerBehavior : MonoBehaviour
 
     private void ChangeOcto()
     {
-        humanPlayer.SetActive(change ? false : true);
-        octoPlayer.SetActive(change ? true : false);
+        if(!isSharkWave)
+        {
+            humanPlayer.SetActive(change ? false : true);
+            octoPlayer.SetActive(change ? true : false);
+        }
+     
     }
 
 
@@ -203,6 +262,7 @@ public class PlayerBehavior : MonoBehaviour
 
 
 
+   
 
 
 
@@ -215,22 +275,6 @@ public class PlayerBehavior : MonoBehaviour
             isJumping = false;
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }
 

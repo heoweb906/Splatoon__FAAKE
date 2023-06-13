@@ -5,58 +5,17 @@ using UnityEngine;
 public class Curling : MonoBehaviour
 {
     Rigidbody rigid;
+    public GameObject destoryParticle;
 
-    public ParticleSystem colliderparticle;
-    private Renderer[] objectRenderers;
   
-
     void Awake()
     {
-        colliderparticle.Play();
         rigid = GetComponent<Rigidbody>();
-        objectRenderers = GetComponentsInChildren<Renderer>();
+        Destroy(gameObject, 3f);
     }
 
 
-
-
-    //private void Bomb()
-    //{
-    //    colliderparticle.Stop();
-    //    bombParticle1.Play();
-    //    //HideObjects();
-    //    Invoke("BombStop", 0.2f);
-    //}
-    //private void BombStop()
-    //{
-    //    bombParticle1.Stop();
-
-    //    Destroy(gameObject,2f);
-    //}
-
-
-
-
-    // 렌더러 보이고 안보이고 관리하는 함수들
-    private void SetObjectVisibility(bool isVisible)
-    {
-        foreach (Renderer renderer in objectRenderers)
-        {
-            renderer.enabled = isVisible;
-        }
-    }
-    public void ShowObjects()
-    {
-        SetObjectVisibility(true);
-    }
-    public void HideObjects()
-    {
-        SetObjectVisibility(false);
-    }
-
-
-
-    private void OnCollisionEnter(Collision collision)
+    private void OnCollisionEnter(Collision collision)  // 벽이랑 닿았을 때 튕기는 코드
     {
         if(collision.gameObject.CompareTag("Wall"))
         {
@@ -69,5 +28,12 @@ public class Curling : MonoBehaviour
                 GetComponent<Rigidbody>().AddForce(bounceDirection * bounceForce, ForceMode.Impulse);
             }
         }
+    }
+
+
+    private void OnDisable()
+    {
+        // 현재 오브젝트의 위치에 새로운 오브젝트 생성
+        Instantiate(destoryParticle, transform.position, transform.rotation);
     }
 }
