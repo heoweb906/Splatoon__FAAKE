@@ -55,7 +55,7 @@ public class PlayerBehavior : MonoBehaviour
     public GameObject targetObject;  // 레이어를 변경할 대상 오브젝트
     public string octopusLayer = "Octopus";  // 옥토뿌리레이어 이름
     public string playerLayer = "Player";  // 플레이어 레이어 이름
-    public Color temaColor;
+    public Color teamColor;
     public bool ourColor;
 
 
@@ -80,8 +80,7 @@ public class PlayerBehavior : MonoBehaviour
         CurlingBomb();
         CamLock();
         MoveForward();
-        CatchColor();
-
+        CheckColor();
 
 
         ChangeOcto();
@@ -298,7 +297,6 @@ public class PlayerBehavior : MonoBehaviour
         else
         { }
     }
-
     void ChangeLayertoPlayer(GameObject targetObject, string playerLayer)
     {
         int newLayer = LayerMask.NameToLayer(playerLayer);
@@ -312,32 +310,38 @@ public class PlayerBehavior : MonoBehaviour
     }
 
 
-    void CatchColor()
+
+    void CheckColor()
     {
+        Ray ray = new Ray(transform.position, -transform.up);
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, Vector3.down, out hit, 1.2f))
+
+        if (Physics.Raycast(ray, out hit,1.2f))
         {
-            // 레이와 충돌한 오브젝트의 MeshRenderer 컴포넌트를 가져옴
-            MeshRenderer meshRenderer = hit.collider.GetComponent<MeshRenderer>();
-            temaColor = meshRenderer.material.color;
-            //if (temaColor == meshRenderer.material.color)
-            //{
-            //    ourColor = true;
-            //}
+            Paintable paintable = hit.collider.GetComponent<Paintable>();
+            
+            if (paintable != null)
+            {
+                RenderTexture maskTexture = paintable.getMask();
+                Texture2D maskTexture2D = new Texture2D(maskTexture.width, maskTexture.height, TextureFormat.RGBA32, false);
+                RenderTexture.active = maskTexture;
+                maskTexture2D.ReadPixels(new Rect(0, 0, maskTexture.width, maskTexture.height), 0, 0);
+                maskTexture2D.Apply();
+
+                Vector2 pixelUV = hit.textureCoord;
+                pixelUV.x *= maskTexture.width;
+                pixelUV.y *= maskTexture.height;
+
+                Color color = maskTexture2D.GetPixel((int)pixelUV.x, (int)pixelUV.y);
+                teamColor = color;
+                Debug.Log("Hit color: " + color);
+            }
         }
 
-
-        //if (Physics.Raycast(transform.position, Vector3.down, out hit, 1.2f))
-        //{
-        //    Debug.Log("asdasd");
-        //}
-        //else
-        //{
-        //    Debug.Log("asdasd");
-        //}
-
-        Debug.DrawRay(transform.position, Vector3.down * 1.2f, Color.red);
+        Debug.DrawRay(ray.origin, ray.direction * 1.2f, Color.red);
     }
+   
+
 
 
 
