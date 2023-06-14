@@ -8,6 +8,7 @@ TagManager:
   - Floor
   - Wall
   - Curling
+  - Octopus
   layers:
   - Default
   - TransparentFX
@@ -17,9 +18,9 @@ TagManager:
   - UI
   - Player
   - Curling
-  - 
-  - 
-  - 
+  - Octopus
+  - Floor
+  - Wall
   - 
   - 
   - 

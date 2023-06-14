@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using UnityEditorInternal;
 using UnityEngine;
 
 public class PlayerBehavior : MonoBehaviour
@@ -29,27 +30,33 @@ public class PlayerBehavior : MonoBehaviour
     public float turnSpeed; // 회전 속도
     public float forceMagnitude = 20f; // 컬링 던지는 힘의 크기
 
-    public bool jDown; // 점프 키
-    private bool change; // 오징어 변신
+    private bool jDown; // 점프 키
+    public bool change; // 오징어 변신
     private bool fireOn; // 공격 시작
     private bool fireOff; // 공격 종료
     private bool fireCurling; // 컬링 공격
     private bool fireshark; // 샤크 웨이브
+    public bool firesharkStop; // 샤크 중지
+    public bool canChange;
     
-
     private bool isJumping; // 점프 중인지 여부를 나타내는 변수
     private bool isFiring; // 공격을 하고 있는지
     private bool isSharkWave; // 궁극기를 사용하고 있는지
-    private bool isSharkmove; // 궁극기를 사용하고 있는지
-
-
+    private bool isSharkmove; // 궁극기 사용 중 움직임을 담당하는 변수
 
     private Vector3 moveVec; // 플레이어의 이동 값
     private Vector3 playerLookDirc; // 플레이어 회전 할 때 사용할 값(1)
     private Quaternion playerRotateVec; // 플레이어 회전 할 때 사용할 값(2)
     private Vector3 gunLookDirc; // 총 회전 할 때 사용할 값(1)
     private Quaternion gunRotateVec; // 총 회전 할 때 사용할 값(2)
-    
+
+
+    // 레이어 변경을 위해 필요한 변수들
+    public GameObject targetObject;  // 레이어를 변경할 대상 오브젝트
+    public string octopusLayer = "Octopus";  // 옥토뿌리레이어 이름
+    public string playerLayer = "Player";  // 플레이어 레이어 이름
+    public Color temaColor;
+    public bool ourColor;
 
 
     private void Awake()
@@ -58,32 +65,35 @@ public class PlayerBehavior : MonoBehaviour
         rigid = GetComponent<Rigidbody>();
     }
 
-    private void CamLock() {
+    private void CamLock()
+    {
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }
-
 
     private void Update()
     {
         GetInput();
         Move();
         PlayerTurn();
-        ChangeOcto();
         Attack();
         CurlingBomb();
         CamLock();
-
-
         MoveForward();
+        CatchColor();
+
+
+
+        ChangeOcto();
+        if (Input.GetButtonDown("Change"))
+        {
+            ChangeLayertoOctopus(targetObject, octopusLayer);
+        }
+        if (Input.GetButtonUp("Change"))
+        {
+            ChangeLayertoPlayer(targetObject, playerLayer);
+        }
     }
-
-
-
-    
-
-  
-
 
 
 
@@ -98,12 +108,13 @@ public class PlayerBehavior : MonoBehaviour
         fireOff = Input.GetButtonUp("Fire1");
         fireCurling = Input.GetButtonDown("Fire2");
         fireshark = Input.GetButtonDown("SharkWave");
+        firesharkStop = Input.GetButtonDown("SharkWaveStop");   
     }
 
 
     private void Move() // 이동을 관리하는 함수
     {
-        if(!isSharkWave)
+        if(!isSharkWave && !canChange)
         {
             // 입력에 따른 이동 방향 계산
             Vector3 moveDirection = new Vector3(hAxis, 0f, vAxis).normalized;
@@ -127,16 +138,22 @@ public class PlayerBehavior : MonoBehaviour
             }
         }
         
-
         if(fireshark && isSharkWave == false)
         {
-            StartCoroutine(SharkWave());
+            StartCoroutine(SharkWave1());
+        }
+        if (firesharkStop && isSharkWave)
+        {
+            isSharkmove = false;
+            isSharkWave = false;
+            Invoke("SharkWave2", 0.4f);
         }
     }
 
 
-    IEnumerator SharkWave()
+    IEnumerator SharkWave1()
     {
+        canChange = true;
         isSharkWave = true;
         humanPlayer.SetActive(false);
         shark.SetActive(true);
@@ -144,16 +161,17 @@ public class PlayerBehavior : MonoBehaviour
 
         isSharkmove = true;
 
+       
         yield return new WaitForSeconds(1.2f);
 
         isSharkmove = false;
 
         yield return new WaitForSeconds(0.4f);
-
-        isSharkWave = false;
-        humanPlayer.SetActive(true);
-        shark.SetActive(false);
-        Instantiate(sharkBomb, transform.position, transform.rotation);
+        if(isSharkWave)
+        {
+            SharkWave2();
+        }
+        
     }
     private void MoveForward()
     {
@@ -163,13 +181,21 @@ public class PlayerBehavior : MonoBehaviour
             transform.position = newPosition;
         }
     }
+    private void SharkWave2()
+    {
+        isSharkWave = false;
+        canChange = false;
+        humanPlayer.SetActive(true);
+        shark.SetActive(false);
+        Instantiate(sharkBomb, transform.position, transform.rotation);
+    }
 
 
 
 
     private void PlayerTurn()  // 플레이어 회전(총 회전도 같이 관리함)
     {
-        if(!isSharkWave)
+        if(!isSharkWave && !canChange)
         {
             playerLookDirc = new Vector3(hAxis, 0, vAxis);
             playerLookDirc = mainCamera.transform.TransformDirection(playerLookDirc);
@@ -209,7 +235,7 @@ public class PlayerBehavior : MonoBehaviour
 
     private void ChangeOcto()
     {
-        if(!isSharkWave)
+        if(!canChange)
         {
             humanPlayer.SetActive(change ? false : true);
             octoPlayer.SetActive(change ? true : false);
@@ -261,9 +287,57 @@ public class PlayerBehavior : MonoBehaviour
     }
 
 
+    void ChangeLayertoOctopus(GameObject targetObject, string octopusLayer)
+    {
+        int newLayer = LayerMask.NameToLayer(octopusLayer);
 
-   
+        if (newLayer != -1)
+        {
+            targetObject.layer = newLayer;
+        }
+        else
+        { }
+    }
 
+    void ChangeLayertoPlayer(GameObject targetObject, string playerLayer)
+    {
+        int newLayer = LayerMask.NameToLayer(playerLayer);
+
+        if (newLayer != -1)
+        {
+            targetObject.layer = newLayer;
+        }
+        else
+        { }
+    }
+
+
+    void CatchColor()
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position, Vector3.down, out hit, 1.2f))
+        {
+            // 레이와 충돌한 오브젝트의 MeshRenderer 컴포넌트를 가져옴
+            MeshRenderer meshRenderer = hit.collider.GetComponent<MeshRenderer>();
+            temaColor = meshRenderer.material.color;
+            //if (temaColor == meshRenderer.material.color)
+            //{
+            //    ourColor = true;
+            //}
+        }
+
+
+        //if (Physics.Raycast(transform.position, Vector3.down, out hit, 1.2f))
+        //{
+        //    Debug.Log("asdasd");
+        //}
+        //else
+        //{
+        //    Debug.Log("asdasd");
+        //}
+
+        Debug.DrawRay(transform.position, Vector3.down * 1.2f, Color.red);
+    }
 
 
 
