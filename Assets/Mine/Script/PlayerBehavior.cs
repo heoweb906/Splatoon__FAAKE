@@ -310,7 +310,6 @@ public class PlayerBehavior : MonoBehaviour
     }
 
 
-
     void CheckColor()
     {
         Ray ray = new Ray(transform.position, -transform.up);
@@ -334,7 +333,7 @@ public class PlayerBehavior : MonoBehaviour
 
                 Color color = maskTexture2D.GetPixel((int)pixelUV.x, (int)pixelUV.y);
                 teamColor = color;
-                Debug.Log("Hit color: " + color);
+                Debug.Log("Hit color: " + color); // 지금 발 아래 있는 색을 출력
             }
         }
 

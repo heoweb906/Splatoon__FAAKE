@@ -14956,7 +14956,7 @@ GameObject:
   - component: {fileID: 462522310}
   - component: {fileID: 462522309}
   - component: {fileID: 462522308}
-  m_Layer: 0
+  m_Layer: 1
   m_Name: Floor
   m_TagString: Floor
   m_Icon: {fileID: 0}
@@ -40638,7 +40638,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2031887272}
-  m_LocalRotation: {x: 0.05651576, y: 0.03227457, z: -0.0018279003, w: 0.99787825}
+  m_LocalRotation: {x: 0.05651576, y: 0.032274563, z: -0.0018279, w: 0.99787825}
   m_LocalPosition: {x: 0, y: 3.52, z: -7.04}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
@@ -46500,8 +46500,6 @@ GameObject:
   m_Component:
   - component: {fileID: 543450651753464709}
   - component: {fileID: 919132147745823040}
-  - component: {fileID: 919132147745823041}
-  - component: {fileID: 919132147745823042}
   m_Layer: 0
   m_Name: Octopus
   m_TagString: Untagged
@@ -46525,33 +46523,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 80
   m_CollisionDetection: 0
---- !u!65 &919132147745823041
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 919132147745823039}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 0.02, y: 0.02, z: 0.05}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!136 &919132147745823042
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 919132147745823039}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  m_Radius: 0.003
-  m_Height: 0.005
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &919132148818954113
 GameObject:
   m_ObjectHideFlags: 0
@@ -48645,7 +48616,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3610375508136552950}
-  m_LocalRotation: {x: 0.05651576, y: 0.032274567, z: -0.0018279001, w: 0.99787825}
+  m_LocalRotation: {x: 0.05651576, y: 0.032274563, z: -0.0018279001, w: 0.99787825}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
