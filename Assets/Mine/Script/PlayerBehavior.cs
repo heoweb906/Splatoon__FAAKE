@@ -23,6 +23,8 @@ public class PlayerBehavior : MonoBehaviour
     public Camera mainCamera;
     public Transform curlingPosition;
 
+
+    public int hp; // 플레이어 체력
     public float speed;  // 플레이어 스피드
     public float hAxis; // 이동 시 수평 값을 위한 변수
     public float vAxis; // 이동 시 수직 값을 위한 변수
@@ -37,8 +39,8 @@ public class PlayerBehavior : MonoBehaviour
     private bool fireCurling; // 컬링 공격
     private bool fireshark; // 샤크 웨이브
     public bool firesharkStop; // 샤크 중지
-    public bool canChange;
-    
+    public bool canChange; // 샤크 함수 작동시 필요한 변수
+
     private bool isJumping; // 점프 중인지 여부를 나타내는 변수
     private bool isFiring; // 공격을 하고 있는지
     private bool isSharkWave; // 궁극기를 사용하고 있는지
@@ -55,14 +57,52 @@ public class PlayerBehavior : MonoBehaviour
     public GameObject targetObject;  // 레이어를 변경할 대상 오브젝트
     public string octopusLayer = "Octopus";  // 옥토뿌리레이어 이름
     public string playerLayer = "Player";  // 플레이어 레이어 이름
+    public Color nowColor;
     public Color teamColor;
-    public bool ourColor;
+    public Color enemyColor;
+    public bool swim; // 바닥에서 헤엄치고 있는지 확인
+    public bool swimwall; // 벽에서 헤엄치고 있는지 확인
+    public bool ourColor; // 지금 바닥의 색이 아군 진영인지
+    public bool otherColor; // 지금 바닥의 색이 적 진영인지
+
+
+
+
+
+    // 테스트 중 target(Script 1)
+    public float climb = 2f;
+    public void Commence(float amount)
+    {
+        climb -= amount;
+        if (climb <= 0f)
+        {
+            Go();
+        }
+    }
+    void Go()
+    {
+        Destroy(gameObject);
+    }
+
+    // 테스트 중 WallClimbScript(Script 2)
+    public float open = 100f;
+    public float range = 1f;
+    public bool TouchingWall = false;
+    public float UpwardSpeed;
+    public Camera Cam;
+
+
 
 
     private void Awake()
     {
-        CamLock();
+        CamLock(); 
         rigid = GetComponent<Rigidbody>();
+    }
+    private void Start()
+    {
+        CamLock(); // 게임 시작 시 카메라 락
+        InvokeRepeating("CheckColor", 0f, 0.1f); // 색깔 확인 함수, 연산량이 너무 많아서 InvokeRepeating로 반복하려고 뺐음
     }
 
     private void CamLock()
@@ -77,24 +117,23 @@ public class PlayerBehavior : MonoBehaviour
         Move();
         PlayerTurn();
         Attack();
-        CurlingBomb();
-        CamLock();
         MoveForward();
-        CheckColor();
-
-
         ChangeOcto();
-        if (Input.GetButtonDown("Change"))
+        Drop();  // 플레이어를 아래 방향을 당기는 함수, 문어 변신시 너무 느리게 잉크로 들어가서 추가했음
+        ChangeSpeed(); // 플레이어의 현재 상태에 따라 스피드를 바꾸는 함수
+
+
+        // 테스트 중
+        if (Input.GetKey("w") && TouchingWall == true)
         {
-            ChangeLayertoOctopus(targetObject, octopusLayer);
+            transform.position += Vector3.up * Time.deltaTime * UpwardSpeed;
+            TouchingWall = false;
+            GetComponent<Rigidbody>().isKinematic = false;
         }
-        if (Input.GetButtonUp("Change"))
-        {
-            ChangeLayertoPlayer(targetObject, playerLayer);
-        }
+
+
+
     }
-
-
 
 
     private void GetInput()  // 입력을 받는 함수
@@ -105,15 +144,23 @@ public class PlayerBehavior : MonoBehaviour
         change = Input.GetButton("Change");
         fireOn = Input.GetButtonDown("Fire1");
         fireOff = Input.GetButtonUp("Fire1");
-        fireCurling = Input.GetButtonDown("Fire2");
         fireshark = Input.GetButtonDown("SharkWave");
-        firesharkStop = Input.GetButtonDown("SharkWaveStop");   
+        firesharkStop = Input.GetButtonDown("SharkWaveStop");
+
+        if(Input.GetButtonDown("Fire2"))
+        {
+            CurlingBomb();
+        }
     }
+
+
+   
+
 
 
     private void Move() // 이동을 관리하는 함수
     {
-        if(!isSharkWave && !canChange)
+        if(!isSharkWave && !canChange && !TouchingWall)
         {
             // 입력에 따른 이동 방향 계산
             Vector3 moveDirection = new Vector3(hAxis, 0f, vAxis).normalized;
@@ -129,7 +176,6 @@ public class PlayerBehavior : MonoBehaviour
             moveVec = cameraForward * moveDirection.z + cameraRight * moveDirection.x;
 
             transform.position += moveVec * speed * Time.deltaTime;
-
 
             if (jDown && !isJumping)
             {
@@ -223,6 +269,10 @@ public class PlayerBehavior : MonoBehaviour
         }
         
     }
+    private void Drop()
+    {
+        rigid.AddForce(Vector3.down * 15f, ForceMode.Impulse);
+    }
 
 
 
@@ -238,8 +288,47 @@ public class PlayerBehavior : MonoBehaviour
         {
             humanPlayer.SetActive(change ? false : true);
             octoPlayer.SetActive(change ? true : false);
+            
         }
-     
+
+        if (octoPlayer.activeSelf)
+        {
+            if (ourColor)
+            {
+                ChangeLayertoOctopus(targetObject, octopusLayer);
+            }
+            else
+            {
+                ChangeLayertoPlayer(targetObject, playerLayer);
+            }
+        }
+        else
+        {
+            ChangeLayertoPlayer(targetObject, playerLayer);
+        }
+
+    }
+    void ChangeLayertoOctopus(GameObject targetObject, string octopusLayer)
+    {
+        int newLayer = LayerMask.NameToLayer(octopusLayer);
+
+        if (newLayer != -1)
+        {
+            targetObject.layer = newLayer;
+        }
+        else
+        { }
+    }
+    void ChangeLayertoPlayer(GameObject targetObject, string playerLayer)
+    {
+        int newLayer = LayerMask.NameToLayer(playerLayer);
+
+        if (newLayer != -1)
+        {
+            targetObject.layer = newLayer;
+        }
+        else
+        { }
     }
 
 
@@ -275,40 +364,14 @@ public class PlayerBehavior : MonoBehaviour
 
     private void CurlingBomb()
     {
-        if(fireCurling)
-        {
+        
             GameObject newObject = Instantiate(curlingStone, curlingPosition.position, curlingPosition.rotation);
             Vector3 forceDirection = transform.forward; 
 
             Rigidbody rb = newObject.GetComponent<Rigidbody>();
             rb.AddForce(forceDirection * forceMagnitude, ForceMode.Impulse);
-        }
+        
     }
-
-
-    void ChangeLayertoOctopus(GameObject targetObject, string octopusLayer)
-    {
-        int newLayer = LayerMask.NameToLayer(octopusLayer);
-
-        if (newLayer != -1)
-        {
-            targetObject.layer = newLayer;
-        }
-        else
-        { }
-    }
-    void ChangeLayertoPlayer(GameObject targetObject, string playerLayer)
-    {
-        int newLayer = LayerMask.NameToLayer(playerLayer);
-
-        if (newLayer != -1)
-        {
-            targetObject.layer = newLayer;
-        }
-        else
-        { }
-    }
-
 
     void CheckColor()
     {
@@ -332,14 +395,54 @@ public class PlayerBehavior : MonoBehaviour
                 pixelUV.y *= maskTexture.height;
 
                 Color color = maskTexture2D.GetPixel((int)pixelUV.x, (int)pixelUV.y);
-                teamColor = color;
-                Debug.Log("Hit color: " + color); // 지금 발 아래 있는 색을 출력
+                nowColor = color;
             }
         }
 
-        Debug.DrawRay(ray.origin, ray.direction * 1.2f, Color.red);
+        if(0.89f <= nowColor.r && nowColor.r <= 0.98f && 0.70f <= nowColor.g && nowColor.g <= 0.78f && 0.30f <= nowColor.b&& nowColor.b <= 0.42f)
+        {
+            ourColor = true;
+        }
+        else
+        {
+            ourColor = false;
+        }
+        if (0.18f <= nowColor.r && nowColor.r <= 0.23f && 0.66f <= nowColor.g && nowColor.g <= 0.72f && 0.44f <= nowColor.b && nowColor.b <= 0.50f)
+        {
+            otherColor = true;
+        }
+        else
+        {
+            otherColor = false;
+        }
     }
-   
+
+    private void ChangeSpeed()
+    {
+        speed = 8;
+        jumpForce = 4000;
+
+        if (!change)
+        {
+            if (otherColor)
+            {
+                speed = 4;
+            }
+        }
+        else if (change)
+        {
+            speed = 4;
+            if (swim)
+            {
+                jumpForce = 5000;
+                speed = 12;
+            }
+            if (otherColor)
+            {
+                speed = 2;
+            }
+        }
+    }
 
 
 
@@ -352,6 +455,5 @@ public class PlayerBehavior : MonoBehaviour
             isJumping = false;
         }
     }
-
 }
 
