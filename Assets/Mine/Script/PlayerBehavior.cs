@@ -58,38 +58,22 @@ public class PlayerBehavior : MonoBehaviour
     public string octopusLayer = "Octopus";  // 옥토뿌리레이어 이름
     public string playerLayer = "Player";  // 플레이어 레이어 이름
     public Color nowColor;
+    public Color nowColorWall;
     public Color teamColor;
     public Color enemyColor;
     public bool swim; // 바닥에서 헤엄치고 있는지 확인
     public bool swimwall; // 벽에서 헤엄치고 있는지 확인
     public bool ourColor; // 지금 바닥의 색이 아군 진영인지
     public bool otherColor; // 지금 바닥의 색이 적 진영인지
+    public bool ourColorWall; // 지금 벽의 색이 아군 진영인지
 
 
-
-
-
-    // 테스트 중 target(Script 1)
-    public float climb = 2f;
-    public void Commence(float amount)
-    {
-        climb -= amount;
-        if (climb <= 0f)
-        {
-            Go();
-        }
-    }
-    void Go()
-    {
-        Destroy(gameObject);
-    }
 
     // 테스트 중 WallClimbScript(Script 2)
     public float open = 100f;
     public float range = 1f;
     public bool TouchingWall = false;
     public float UpwardSpeed;
-    public Camera Cam;
 
 
 
@@ -102,7 +86,8 @@ public class PlayerBehavior : MonoBehaviour
     private void Start()
     {
         CamLock(); // 게임 시작 시 카메라 락
-        InvokeRepeating("CheckColor", 0f, 0.1f); // 색깔 확인 함수, 연산량이 너무 많아서 InvokeRepeating로 반복하려고 뺐음
+        InvokeRepeating("CheckColorFloor", 0f, 0.1f); // 색깔 확인 함수, 연산량이 너무 많아서 InvokeRepeating로 반복하려고 뺐음
+        InvokeRepeating("CheckColorWall", 0.1f, 0.12f);
     }
 
     private void CamLock()
@@ -123,17 +108,42 @@ public class PlayerBehavior : MonoBehaviour
         ChangeSpeed(); // 플레이어의 현재 상태에 따라 스피드를 바꾸는 함수
 
 
-        // 테스트 중
+        // 벽타기 코드
+        Shoot();
+
         if (Input.GetKey("w") && TouchingWall == true)
         {
-            transform.position += Vector3.up * Time.deltaTime * UpwardSpeed;
-            TouchingWall = false;
-            GetComponent<Rigidbody>().isKinematic = false;
+            if(ourColorWall)
+            {
+                transform.position += Vector3.up * Time.deltaTime * UpwardSpeed;
+                GetComponent<Rigidbody>().isKinematic = true;
+                TouchingWall = false;
+                GetComponent<Rigidbody>().isKinematic = false;
+            }
         }
 
-
-
+        if (Input.GetKeyUp("w"))
+        {
+            GetComponent<Rigidbody>().isKinematic = false;
+            TouchingWall = false;
+        }
     }
+
+    void Shoot()
+    {
+        RaycastHit hit;
+        if(Physics.Raycast(transform.position, transform.forward,out hit, range))
+        {
+            Wall wall = hit.transform.GetComponent<Wall>();
+            if(wall != null)
+            {
+                TouchingWall = true;
+            }
+        }
+    }
+
+
+
 
 
     private void GetInput()  // 입력을 받는 함수
@@ -153,14 +163,9 @@ public class PlayerBehavior : MonoBehaviour
         }
     }
 
-
-   
-
-
-
     private void Move() // 이동을 관리하는 함수
     {
-        if(!isSharkWave && !canChange && !TouchingWall)
+        if(!isSharkWave && !canChange)
         {
             // 입력에 따른 이동 방향 계산
             Vector3 moveDirection = new Vector3(hAxis, 0f, vAxis).normalized;
@@ -194,7 +199,6 @@ public class PlayerBehavior : MonoBehaviour
             Invoke("SharkWave2", 0.4f);
         }
     }
-
 
     IEnumerator SharkWave1()
     {
@@ -235,9 +239,6 @@ public class PlayerBehavior : MonoBehaviour
         Instantiate(sharkBomb, transform.position, transform.rotation);
     }
 
-
-
-
     private void PlayerTurn()  // 플레이어 회전(총 회전도 같이 관리함)
     {
         if(!isSharkWave && !canChange)
@@ -274,8 +275,6 @@ public class PlayerBehavior : MonoBehaviour
         rigid.AddForce(Vector3.down * 15f, ForceMode.Impulse);
     }
 
-
-
     private void Jump() // 점프를 처리하는 함수
     {
         isJumping = true;
@@ -293,7 +292,7 @@ public class PlayerBehavior : MonoBehaviour
 
         if (octoPlayer.activeSelf)
         {
-            if (ourColor)
+            if (ourColor || ourColorWall)
             {
                 ChangeLayertoOctopus(targetObject, octopusLayer);
             }
@@ -361,7 +360,6 @@ public class PlayerBehavior : MonoBehaviour
         colliderparticle.Stop();
     }
 
-
     private void CurlingBomb()
     {
         
@@ -373,7 +371,7 @@ public class PlayerBehavior : MonoBehaviour
         
     }
 
-    void CheckColor()
+    void CheckColorFloor()
     {
         Ray ray = new Ray(transform.position, -transform.up);
         RaycastHit hit;
@@ -414,6 +412,51 @@ public class PlayerBehavior : MonoBehaviour
         else
         {
             otherColor = false;
+        }
+    }
+
+    void CheckColorWall()
+    {
+        Vector3 rayOrigin = transform.position - transform.forward * 0.2f;
+        Ray ray2 = new Ray(rayOrigin, transform.forward);
+        RaycastHit hit2;
+
+        if (Physics.Raycast(ray2, out hit2, 3f))
+        {
+            Paintable paintable = hit2.collider.GetComponent<Paintable>();
+
+            if (paintable != null)
+            {
+                RenderTexture maskTexture = paintable.getMask();
+                Texture2D maskTexture2D = new Texture2D(maskTexture.width, maskTexture.height, TextureFormat.RGBA32, false);
+                RenderTexture.active = maskTexture;
+                maskTexture2D.ReadPixels(new Rect(0, 0, maskTexture.width, maskTexture.height), 0, 0);
+                maskTexture2D.Apply();
+
+                Vector2 pixelUV = hit2.textureCoord;
+                pixelUV.x *= maskTexture.width;
+                pixelUV.y *= maskTexture.height;
+
+                Color color = maskTexture2D.GetPixel((int)pixelUV.x, (int)pixelUV.y);
+                nowColorWall = color;
+            }
+            else
+            {
+                nowColorWall = Color.black;
+            }
+        }
+        else
+        {
+            nowColorWall = Color.black;
+        }
+
+        if (0.89f <= nowColorWall.r && nowColorWall.r <= 0.98f && 0.70f <= nowColorWall.g && nowColorWall.g <= 0.78f && 0.30f <= nowColorWall.b && nowColorWall.b <= 0.42f)
+        {
+            ourColorWall = true;
+        }
+        else
+        {
+            ourColorWall = false;
         }
     }
 

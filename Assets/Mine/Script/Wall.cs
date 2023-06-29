@@ -4,6 +4,21 @@ using UnityEngine;
 
 public class Wall : MonoBehaviour
 {
+    public float climb = 2f;
+    public void Commence(float amount)
+    {
+        climb -= amount;
+        if (climb <= 0f)
+        {
+            Go();
+        }
+    }
+    void Go()
+    {
+        Destroy(gameObject);
+    }
+
+
     private void OnCollisionEnter(Collision collision)
     {
         PlayerBehavior playerBehavior = collision.gameObject.GetComponent<PlayerBehavior>();
